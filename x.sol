@@ -10,7 +10,8 @@ contract battle{
         bool chosen_weapon;
     }
     mapping (address => stats) public player;
-    
+        uint256 public gameStartTime;
+    uint256 public constant TIMEOUT_DURATION = 1 hours; // Or appropriate timeout
     // --- New Weapon Structure ---
     struct Weapon {
         string name;
@@ -33,63 +34,55 @@ contract battle{
     mapping (address => uint) public playerWeaponIndex; 
 
     // --- Constructor (Modified to include Weapon setup) ---
-    constructor(address _player1, address _player2) {
-        require(_player1 != address(0), "Player1 cannot be zero address");
-        require(_player2 != address(0), "Player2 cannot be zero address");
-        require(_player1 != _player2, "Players must be different");
-        
-        // Initialize Player 1 stats
-        player[_player1] = stats(100, 10, true,false);
-        
-        // Initialize Player 2 stats
-        player[_player2] = stats(100, 10, true,false);
-        
-        player1 = _player1;
-        player2 = _player2;
-        currentTurn = _player1; // Player 1 starts the game
-        
-        // Populate the list of available weapons
-        availableWeapons.push(Weapon("Fists", 0, 0));       
-        availableWeapons.push(Weapon("Dagger", 5, 2));      
-        availableWeapons.push(Weapon("Sword", 10, 5));      
-        availableWeapons.push(Weapon("Great Axe", 20, 8));
-           healthpotionbalance[_player1] = 3; // Give each player 3 health potions
-    healthpotionbalance[_player2] = 3;
-    armorreplenish[_player1] = 2; // Give each player 2 armor potions
-    armorreplenish[_player2] = 2;
-    }
+address public gameCreator;
+uint256 public gameCount;
+
+modifier onlyCreator() {
+    require(msg.sender == gameCreator, "Only creator can reset");
+    _;
+}
+
+constructor(address _player1, address _player2) {
+    gameCreator = msg.sender;
+        availableWeapons.push(Weapon("Sword", 10, 3));
+    availableWeapons.push(Weapon("Axe", 15, 5));
+    availableWeapons.push(Weapon("Spear", 8, 2));
+    availableWeapons.push(Weapon("Dagger", 5, 1));
+    
+    initializeGame(_player1, _player2);
+        gameStartTime = block.timestamp;
+
+}
+function cancelGameTimeout() public {
+    require(block.timestamp > gameStartTime + TIMEOUT_DURATION, "Timeout not reached");
+    require(!combatPhaseStarted, "Combat already started");
+    gameEnded = true;
+    // Optionally emit a GameCancelled event
+}
 
     // --- Function to Choose a Weapon (unchanged) ---
-    function chooseWeapon(uint _weaponIndex) public {
-        if (!player[msg.sender].chosen_weapon){
-        // 1. Input Validation
-        require(!gameEnded, "Game has ended.");
-        require(_weaponIndex < availableWeapons.length, "Invalid weapon index.");
-        
-        address currentPlayer = msg.sender;
-        
-        // Ensure only a valid player calls this
-        require(currentPlayer == player1 || currentPlayer == player2, "Only players can choose a weapon.");
-        
-        Weapon storage chosenWeapon = availableWeapons[_weaponIndex];
-        
-        // Prevent negative armor
-        require(player[currentPlayer].armor >= chosenWeapon.armorCost, "Insufficient armor to equip this weapon.");
-
-        // 2. Apply the Trade-off (Armor Loss)
-        player[currentPlayer].armor -= chosenWeapon.armorCost;
-        
-        // 3. Update the Player's Equipped Weapon
-        playerWeaponIndex[currentPlayer] = _weaponIndex;
-        player[msg.sender].chosen_weapon=true;
-        }
-        else{
-            revert();
-        }
-    }
 bool public combatPhaseStarted = false;
-
+function chooseWeapon(uint _weaponIndex) public {
+    require(msg.sender == player1 || msg.sender == player2, "Not a valid player");
+    require(!combatPhaseStarted, "Combat already started");
+    require(!player[msg.sender].chosen_weapon, "Weapon already chosen");
+    require(_weaponIndex < availableWeapons.length, "Invalid weapon index");
+    
+    // Apply weapon stats
+    Weapon memory selectedWeapon = availableWeapons[_weaponIndex];
+    playerWeaponIndex[msg.sender] = _weaponIndex;
+    
+    // Deduct armor cost for equipping the weapon
+    if (player[msg.sender].armor >= selectedWeapon.armorCost) {
+        player[msg.sender].armor -= selectedWeapon.armorCost;
+    } else {
+        player[msg.sender].armor = 0;
+    }
+    
+    player[msg.sender].chosen_weapon = true;
+}
 function startCombat() public {
+    require(msg.sender == player1 || msg.sender == player2, "Only players can start combat");
     require(!combatPhaseStarted, "Combat already started");
     require(player[player1].chosen_weapon, "Player1 must choose weapon");
     require(player[player2].chosen_weapon, "Player2 must choose weapon");
@@ -161,9 +154,14 @@ function use_health_potion() public {
     require(player[msg.sender].isalive, "Player is dead");
     require(msg.sender == player1 || msg.sender == player2, "Not a valid player");
     require(!gameEnded, "Game has ended");
+    require(combatPhaseStarted, "Combat not started");
+    require(msg.sender == currentTurn, "Not your turn");
     
     healthpotionbalance[msg.sender] -= 1;
     player[msg.sender].health += 4;
+    
+    // Switch turn after using potion
+    currentTurn = (msg.sender == player1) ? player2 : player1;
 }
 
 function use_armor_potion() public {
@@ -171,9 +169,42 @@ function use_armor_potion() public {
     require(player[msg.sender].isalive, "Player is dead");
     require(msg.sender == player1 || msg.sender == player2, "Not a valid player");
     require(!gameEnded, "Game has ended");
-    
+    require(msg.sender == currentTurn, "Not your turn");
+
     armorreplenish[msg.sender] -= 1;
     player[msg.sender].armor += 4;
+    currentTurn = (msg.sender == player1) ? player2 : player1;
+
+}
+
+
+function initializeGame(address _player1, address _player2) private {
+    require(_player1 != address(0) && _player2 != address(0));
+    require(_player1 != _player2);
+    
+    player[_player1] = stats(100, 10, true, false);
+    player[_player2] = stats(100, 10, true, false);
+    
+    player1 = _player1;
+    player2 = _player2;
+    currentTurn = _player1;
+    gameEnded = false;
+    combatPhaseStarted = false;
+    
+    healthpotionbalance[_player1] = 3;
+    healthpotionbalance[_player2] = 3;
+    armorreplenish[_player1] = 2;
+    armorreplenish[_player2] = 2;
+    
+    playerWeaponIndex[_player1] = 0;
+    playerWeaponIndex[_player2] = 0;
+    
+    gameCount++;
+}
+
+function resetGame() public onlyCreator {
+    require(gameEnded, "Current game not finished");
+    initializeGame(player1, player2);
 }
     // --- Events (Highly recommended for smart contract interaction) ---
     event WinnerAnnounced(address winner);
