@@ -1,23 +1,109 @@
-import logo from './logo.svg';
 import './App.css';
+import Onboard from '@web3-onboard/core';
+import metamaskSDK from '@web3-onboard/metamask';
+import { useState, useEffect } from 'react';
+import logo from './logo.svg';
+
+const INFURA_ID = 'e58130da3dee4d6c9f1ab1df59cbe8aa';
+
+const chains = [
+  {
+    id: 11155111,
+    token: 'ETH',
+    label: 'Sepolia',
+    rpcUrl: `https://sepolia.infura.io/v3/${INFURA_ID}`
+  }
+];
+
+const metamaskSDKWallet = metamaskSDK({
+  options: {
+    extensionOnly: true,
+    dappMetadata: { name: 'Demo Web3Onboard' }
+  }
+});
+
+const onboard = Onboard({
+  wallets: [metamaskSDKWallet],
+  chains,
+  appMetadata: {
+    name: 'Web3-Onboard Demo',
+    icon: logo,
+    description: 'Web3-Onboard Demo Application',
+    recommendedInjectedWallets: [
+      { name: 'MetaMask', url: 'https://metamask.io' }
+    ]
+  },
+  
+  connect: { autoConnectLastWallet: true },
+  accountCenter: {
+      desktop: {
+        enabled: true,
+        position: 'topRight'
+      },}
+});
 
 function App() {
+  const [wallet, setWallet] = useState(null);
+  const [contractAddress, setContractAddress] = useState(null);
+  const [returnValue, setReturnValue] = useState(null);
+
+const connect = async () => {
+    const wallets = await onboard.connectWallet();
+    
+    if (wallets[0]) {
+      setWallet(wallets[0]);
+      
+      // *** ADD THIS PART ***
+      try {
+        // Sepolia chain ID is 11155111, which should be converted to hex string for setChain
+        const SEPOLIA_CHAIN_ID_HEX = '0xaa36a7'; // 11155111 in hex
+
+        // Request the wallet to switch to the Sepolia chain
+        await onboard.setChain({ chainId: SEPOLIA_CHAIN_ID_HEX });
+      } catch (error) {
+        console.error("Failed to switch chain to Sepolia:", error);
+      }
+    }
+  };
+useEffect(() => {
+  // 1. Initial check
+  const initialWallets = onboard.state.get().wallets;
+  if (initialWallets.length > 0) {
+    setWallet(initialWallets[0]);
+  }
+
+  // 2. Subscribe to the 'wallets' state slice
+  const wallets$ = onboard.state.select('wallets');
+  const subscription = wallets$.subscribe((newWallets) => { // Rename to subscription object
+    if (newWallets.length > 0) {
+      setWallet(newWallets[0]);
+    } else {
+      // Wallet has disconnected
+      setWallet(null);
+      setContractAddress(null);
+      setReturnValue(null);
+    }
+  });
+
+  // 3. Cleanup function to unsubscribe when the component unmounts
+  return () => {
+    // DEFENSIVE CHECK: Ensure the unsubscribe function exists before calling it.
+    if (typeof subscription.unsubscribe === 'function') {
+      subscription.unsubscribe();
+    }
+  };
+}, []);
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="app-container">
+{!wallet ? (
+  <button className="primary-btn" onClick={connect}>
+    Connect Wallet
+  </button>
+) : (
+  <button className="primary-btn" disabled>
+    Wallet Connected
+  </button>
+)}
     </div>
   );
 }
