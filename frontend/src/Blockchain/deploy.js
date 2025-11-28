@@ -24,12 +24,12 @@ export async function deploy_contract(address) {
         
         await provider.send("eth_requestAccounts", []); 
         const signer = await provider.getSigner();  
-        const ContractFactory = new ContractFactory(abi, bytecode, signer);
+        const factory = new ContractFactory(abi, bytecode, signer);
 
         // --- Deployment Transaction Sent ---
         update({ message: 'Awaiting user confirmation for deployment transaction...' });
         
-        const contract = await ContractFactory.deploy(address);
+        const contract = await factory.deploy(address);
         
         // The contract object now has a deploymentTransaction property
         const tx = contract.deploymentTransaction();
@@ -69,10 +69,9 @@ export async function deploy_contract(address) {
         update({
             type: 'error',
             message: `Contract deployment failed: ${error.message || 'Check console for details.'}`,
-            autoDismiss: 8000 // Dismiss after 8 seconds
+            autoDismiss: 8000 
         });
         
-        // Re-throw the error so the caller can handle it
         throw error;
     }
 }
