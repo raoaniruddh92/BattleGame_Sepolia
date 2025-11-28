@@ -38,8 +38,6 @@ export async function deploy_contract(address) {
         if (tx && tx.hash) {
             update({
                 message: `Deployment transaction sent! Waiting for confirmation... (Tx Hash: ${tx.hash})`,
-                // Optionally add a link to a block explorer
-                // link: `https://etherscan.io/tx/${tx.hash}` // Update for the specific network
             });
         } else {
             update({ message: 'Deployment transaction sent! Waiting for confirmation...' });

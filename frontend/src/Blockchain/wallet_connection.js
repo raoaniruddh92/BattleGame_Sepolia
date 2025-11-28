@@ -1,4 +1,3 @@
-
 import Onboard from '@web3-onboard/core';
 import metamaskSDK from '@web3-onboard/metamask';
 import logo from '../logo.svg';
@@ -31,8 +30,9 @@ export const onboard = Onboard({
       { name: 'MetaMask', url: 'https://metamask.io' }
     ]
   },
-  
-  connect: { autoConnectLastWallet: true },
+  connect:{ // <-- CORRECT KEY
+   autoConnectLastWallet: true
+    },
   accountCenter: {
       desktop: {
         enabled: true,
