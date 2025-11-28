@@ -59,6 +59,25 @@ function App() {
     }
   };
 
+useEffect(() => {
+  // 1. Initial check
+  const initialWallets = onboard.state.get().wallets;
+  if (initialWallets.length > 0) {
+    setWallet(initialWallets[0]);
+  }
+
+  // 2. Subscribe to the 'wallets' state slice
+  const wallets$ = onboard.state.select('wallets');
+  const subscription = wallets$.subscribe((newWallets) => { // Rename to subscription object
+    if (newWallets.length > 0) {
+      setWallet(newWallets[0]);
+    } else {
+      // Wallet has disconnected
+      setWallet(null);
+      setContractAddress(null);
+      setReturnValue(null);
+    }
+  });
 
 
   return (
