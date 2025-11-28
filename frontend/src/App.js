@@ -106,8 +106,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <h1>Smart Contract Deployment DApp</h1>
+        <h1>Battle an opponent</h1>
       </header>
       
       {/* --- NEW: Input Field for Player 2 --- */}
