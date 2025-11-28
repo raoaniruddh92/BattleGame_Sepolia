@@ -3,44 +3,10 @@ import Onboard from '@web3-onboard/core';
 import metamaskSDK from '@web3-onboard/metamask';
 import { useState, useEffect } from 'react';
 import logo from './logo.svg';
-
-const INFURA_ID = 'e58130da3dee4d6c9f1ab1df59cbe8aa';
-
-const chains = [
-  {
-    id: 11155111,
-    token: 'ETH',
-    label: 'Sepolia',
-    rpcUrl: `https://sepolia.infura.io/v3/${INFURA_ID}`
-  }
-];
-
-const metamaskSDKWallet = metamaskSDK({
-  options: {
-    extensionOnly: true,
-    dappMetadata: { name: 'Demo Web3Onboard' }
-  }
-});
-
-const onboard = Onboard({
-  wallets: [metamaskSDKWallet],
-  chains,
-  appMetadata: {
-    name: 'Web3-Onboard Demo',
-    icon: logo,
-    description: 'Web3-Onboard Demo Application',
-    recommendedInjectedWallets: [
-      { name: 'MetaMask', url: 'https://metamask.io' }
-    ]
-  },
-  
-  connect: { autoConnectLastWallet: true },
-  accountCenter: {
-      desktop: {
-        enabled: true,
-        position: 'topRight'
-      },}
-});
+import { chains } from './Blockchain/wallet_connection';
+import { metamaskSDKWallet } from './Blockchain/wallet_connection';
+import { onboard } from './Blockchain/wallet_connection';
+import { deploy_contract } from './Blockchain/deploy';
 
 function App() {
   const [wallet, setWallet] = useState(null);
