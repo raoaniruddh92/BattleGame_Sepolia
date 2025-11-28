@@ -20,6 +20,8 @@ contract battle{
     }
     mapping (address=> uint) healthpotionbalance;
     mapping (address=> uint) armorreplenish;
+    uint256 public lastActionTime;
+uint256 public constant TURN_TIMEOUT = 5 minutes; // Or appropriate timeout value
 
     // --- State Variables ---
     address public player1;
@@ -48,9 +50,10 @@ constructor(address _player1, address _player2) {
     availableWeapons.push(Weapon("Axe", 15, 5));
     availableWeapons.push(Weapon("Spear", 8, 2));
     availableWeapons.push(Weapon("Dagger", 5, 1));
-    
+
     initializeGame(_player1, _player2);
         gameStartTime = block.timestamp;
+    lastActionTime = block.timestamp; // Initialize lastActionTime
 
 }
 function cancelGameTimeout() public {
@@ -93,6 +96,13 @@ function startCombat() public {
     // --- NEW: Attack Function Implementation ---
     // -------------------------------------------------------------------
     function attack() public {
+    if (block.timestamp > lastActionTime + TURN_TIMEOUT && msg.sender != currentTurn) {
+        require(msg.sender == player1 || msg.sender == player2);
+        gameEnded = true;
+        emit WinnerAnnounced(msg.sender);
+        return;
+    }
+    
         require(!gameEnded, "Game has ended. No more attacks.");
         require(combatPhaseStarted, "Combat phase not started");
 
@@ -148,6 +158,7 @@ function startCombat() public {
         if (!gameEnded) {
             currentTurn = defender;
         }
+        lastActionTime=block.timestamp;
     }
 function use_health_potion() public {
     require(healthpotionbalance[msg.sender] > 0, "No health potions available");
